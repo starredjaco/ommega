@@ -206,6 +206,27 @@ pub struct RemoteAttestParams {
     /// extension (`attestationSecurityLevel`/`keymasterSecurityLevel`) with the
     /// same level the A-side reported. Defaults to TEE when absent.
     pub security_level: Option<i32>,
+    /// User-authentication / authorization-list entries the app asked for, as
+    /// `(KeyMint tag, raw value)` pairs:
+    ///
+    /// * `502` `USER_SECURE_ID` (the value the real TEE needs to bind the key to
+    ///   a user; never written into the *attestation*, see below),
+    /// * `503` `NO_AUTH_REQUIRED`, `506` `ALLOW_WHILE_ON_BODY`,
+    ///   `507` `TRUSTED_USER_PRESENCE_REQUIRED`, `508`
+    ///   `TRUSTED_CONFIRMATION_REQUIRED`, `509` `UNLOCKED_DEVICE_REQUIRED`
+    ///   (NULL-valued tags — the value is only a presence marker),
+    /// * `504` `USER_AUTH_TYPE` and `505` `AUTH_TIMEOUT` (integers).
+    ///
+    /// `UserSecureId` is marked `ULONG_REP` in the AIDL but the ASN.1
+    /// `AuthorizationList` has a single `userSecureId` field, and AOSP's KeyMint
+    /// only emits it for `importWrappedKey()` (see `cert.rs::encode_sid`). A
+    /// normal attested key therefore exposes `USER_AUTH_TYPE` + `AUTH_TIMEOUT`
+    /// and *no* SID — a leaf that instead says `NO_AUTH_REQUIRED` for a key the
+    /// app created with `setUserAuthenticationRequired(true)` is
+    /// self-contradictory, and one without `USER_AUTH_TYPE`/`AUTH_TIMEOUT` loses
+    /// the policy entirely (TrustAttestor reports
+    /// `hardware.attestation.user_auth_metadata` / `user_auth_policy`).
+    pub user_auth: Vec<(u32, i64)>,
 }
 
 /// there.  Each method returns `Ok(None)` when the remote is unavailable or not
